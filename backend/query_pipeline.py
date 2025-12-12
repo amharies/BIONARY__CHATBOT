@@ -150,6 +150,7 @@ def handle_user_query(question: str) -> str:
           AND EXTRACT(YEAR FROM date_of_event) = {year}
         ORDER BY date_of_event
         """
+        print(f"DEBUG: Executing SQL query for month/year: {sql}") # Debug print
         rows = retriever_module.query_relational_db(sql)
 
         if not rows:
