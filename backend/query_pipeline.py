@@ -28,6 +28,16 @@ def extract_year(text):
     return int(m.group()) if m else None
 
 
+def extract_month(text):
+    month_map = {
+        "january": 1, "february": 2, "march": 3, "april": 4, "may": 5, "june": 6,
+        "july": 7, "august": 8, "september": 9, "october": 10, "november": 11, "december": 12
+    }
+    for month_name, month_num in month_map.items():
+        if month_name in text:
+            return month_num
+    return None
+
 def extract_person_name(text):
     # This is a simple implementation and can be improved with more sophisticated NLP techniques
     keywords = ["who", "coordinate", "coordinator", "speaker", "events", "do"]
@@ -67,6 +77,7 @@ Answer clearly, professionally, and naturally.
 def handle_user_query(question: str) -> str:
     q = question.lower()
     year = extract_year(q)
+    month = extract_month(q)
 
     # =====================================================
     # EVENTS COUNT
@@ -122,6 +133,44 @@ def handle_user_query(question: str) -> str:
             for r in rows
         )
 
+        return gemini_answer(question, context)
+
+    # =====================================================
+    # MONTH AND YEAR QUERIES
+    # =====================================================
+    if month and year:
+        sql = f"""
+        SELECT
+            name_of_event, event_domain, date_of_event, time_of_event,
+            venue, mode_of_event, registration_fee, speakers, perks,
+            description_insights, faculty_coordinators, student_coordinators,
+            collaboration
+        FROM events
+        WHERE EXTRACT(MONTH FROM date_of_event) = {month}
+          AND EXTRACT(YEAR FROM date_of_event) = {year}
+        ORDER BY date_of_event
+        """
+        rows = retriever_module.query_relational_db(sql)
+
+        if not rows:
+            return f"No events found in {datetime(year, month, 1).strftime('%B %Y')}."
+
+        context = "\n".join(
+            f"Event: {r[0]}\n"
+            f"  Domain: {r[1]}\n"
+            f"  Date: {r[2]}\n"
+            f"  Time: {r[3]}\n"
+            f"  Venue: {r[4]}\n"
+            f"  Mode: {r[5]}\n"
+            f"  Fee: {r[6]}\n"
+            f"  Speakers: {r[7]}\n"
+            f"  Perks: {r[8]}\n"
+            f"  Description: {r[9]}\n"
+            f"  Faculty Coordinators: {r[10]}\n"
+            f"  Student Coordinators: {r[11]}\n"
+            f"  Collaboration: {r[12]}"
+            for r in rows
+        )
         return gemini_answer(question, context)
         
     # =====================================================
