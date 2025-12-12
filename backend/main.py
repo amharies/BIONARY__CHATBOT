@@ -21,11 +21,7 @@ load_dotenv()
 import query_pipeline
 import frontend  # python module, not nextjs
 
-# ────────────────────────────────────────────────
-# JWT CONFIG ⚠ MUST MATCH auth.py EXACTLY
-# ────────────────────────────────────────────────
-SECRET_KEY = "super-secret-key-change-later"
-ALGORITHM = "HS256"
+from config import SECRET_KEY, ALGORITHM
 
 # ────────────────────────────────────────────────
 # APP

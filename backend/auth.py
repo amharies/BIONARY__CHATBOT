@@ -7,12 +7,7 @@ import hashlib
 from database import SessionLocal
 from models import User
 
-# ─────────────────────────────────────
-# JWT CONFIG (MUST MATCH main.py)
-# ─────────────────────────────────────
-SECRET_KEY = "super-secret-key-change-later"
-ALGORITHM = "HS256"
-ACCESS_TOKEN_EXPIRE_MINUTES = 60
+from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
