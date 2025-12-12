@@ -78,7 +78,11 @@ def handle_user_query(question: str) -> str:
     # =====================================================
     if "report" in q or "summary" in q:
         sql = """
-        SELECT name_of_event, event_domain, date_of_event, venue, speakers
+        SELECT
+            name_of_event, event_domain, date_of_event, time_of_event,
+            venue, mode_of_event, registration_fee, speakers, perks,
+            description_insights, faculty_coordinators, student_coordinators,
+            collaboration
         FROM events
         """
         if year:
@@ -91,7 +95,19 @@ def handle_user_query(question: str) -> str:
             return "No events found."
 
         context = "\n".join(
-            f"{r[0]} | {r[1]} | {r[2]} | {r[3]} | {r[4]}"
+            f"Event: {r[0]}\n"
+            f"  Domain: {r[1]}\n"
+            f"  Date: {r[2]}\n"
+            f"  Time: {r[3]}\n"
+            f"  Venue: {r[4]}\n"
+            f"  Mode: {r[5]}\n"
+            f"  Fee: {r[6]}\n"
+            f"  Speakers: {r[7]}\n"
+            f"  Perks: {r[8]}\n"
+            f"  Description: {r[9]}\n"
+            f"  Faculty Coordinators: {r[10]}\n"
+            f"  Student Coordinators: {r[11]}\n"
+            f"  Collaboration: {r[12]}"
             for r in rows
         )
 
@@ -104,14 +120,33 @@ def handle_user_query(question: str) -> str:
         if mode in q:
             rows = retriever_module.query_relational_db(
                 f"""
-                SELECT name_of_event, date_of_event
+                SELECT
+                    name_of_event, event_domain, date_of_event, time_of_event,
+                    venue, mode_of_event, registration_fee, speakers, perks,
+                    description_insights, faculty_coordinators, student_coordinators,
+                    collaboration
                 FROM events
                 WHERE mode_of_event ILIKE '%{mode}%'
                 ORDER BY date_of_event
                 """
             )
 
-            context = "\n".join(f"{r[0]} ({r[1]})" for r in rows)
+            context = "\n".join(
+                f"Event: {r[0]}\n"
+                f"  Domain: {r[1]}\n"
+                f"  Date: {r[2]}\n"
+                f"  Time: {r[3]}\n"
+                f"  Venue: {r[4]}\n"
+                f"  Mode: {r[5]}\n"
+                f"  Fee: {r[6]}\n"
+                f"  Speakers: {r[7]}\n"
+                f"  Perks: {r[8]}\n"
+                f"  Description: {r[9]}\n"
+                f"  Faculty Coordinators: {r[10]}\n"
+                f"  Student Coordinators: {r[11]}\n"
+                f"  Collaboration: {r[12]}"
+                for r in rows
+            )
             return gemini_answer(question, context)
 
     # =====================================================
@@ -122,13 +157,29 @@ def handle_user_query(question: str) -> str:
         if d in q:
             rows = retriever_module.query_relational_db(
                 f"""
-                SELECT name_of_event, event_domain, date_of_event
+                SELECT
+                    name_of_event, event_domain, date_of_event, time_of_event,
+                    venue, mode_of_event, registration_fee, speakers, perks,
+                    description_insights, faculty_coordinators, student_coordinators,
+                    collaboration
                 FROM events
                 WHERE event_domain ILIKE '%{d}%'
                 """
             )
             context = "\n".join(
-                f"{r[0]} ({r[1]}) – {r[2]}"
+                f"Event: {r[0]}\n"
+                f"  Domain: {r[1]}\n"
+                f"  Date: {r[2]}\n"
+                f"  Time: {r[3]}\n"
+                f"  Venue: {r[4]}\n"
+                f"  Mode: {r[5]}\n"
+                f"  Fee: {r[6]}\n"
+                f"  Speakers: {r[7]}\n"
+                f"  Perks: {r[8]}\n"
+                f"  Description: {r[9]}\n"
+                f"  Faculty Coordinators: {r[10]}\n"
+                f"  Student Coordinators: {r[11]}\n"
+                f"  Collaboration: {r[12]}"
                 for r in rows
             )
             return gemini_answer(question, context)
