@@ -17,81 +17,94 @@ model = SentenceTransformer(
 )
 
 # ────────────────────────────────────────────────
-# RELATIONAL QUERY
+# HYBRID QUERY
 # ────────────────────────────────────────────────
-def query_relational_db(sql: str):
+def hybrid_query(
+    user_query: str,
+    date_filter: Optional[str] = None,
+    fee_filter: Optional[int] = None,
+    vector_weight: float = 0.7,
+    trigram_weight: float = 0.3,
+    vector_threshold: float = 0.7,
+):
+    """
+    Performs a hybrid search on the events table using a combination of
+    hard filters, vector search, and trigram fuzzy search.
+    """
     try:
-        with engine.connect() as conn:
-            result = conn.execute(text(sql))
-            rows = result.fetchall()
-        return rows or []
-    except Exception as e:
-        print("❌ Relational DB error:", e)
-        return []
-
-
-# ────────────────────────────────────────────────
-# VECTOR SEARCH
-# ────────────────────────────────────────────────
-def _clean(text_query: str):
-    import re
-    stopwords = {
-        "event","workshop","happen","when","what","where","who","tell",
-        "me","about","the","a","an","of","in","on","is","was","did","for"
-    }
-    text_query = re.sub(r"[^\w\s]", " ", text_query.lower())
-    tokens = [w for w in text_query.split() if w not in stopwords]
-    return " ".join(tokens) if tokens else text_query
-
-
-def query_vector_db(text_query: str):
-    query = _clean(text_query)
-
-    try:
-        embedding = model.encode(query)
+        # 1. Get embedding for the user query
+        embedding = model.encode(user_query)
         if isinstance(embedding, np.ndarray):
             embedding = embedding.tolist()
-    except Exception as e:
-        print("❌ Embedding error:", e)
-        return ["Embedding failed"]
 
-    try:
+        # Convert the list to a string representation of a vector
+        user_vector_str = "[" + ",".join(map(str, embedding)) + "]"
+
+        # 2. Construct and execute the hybrid SQL query
         with engine.connect() as conn:
-            result = conn.execute(
-                text("""
-                    SELECT
-                        name_of_event,
-                        event_domain,
-                        date_of_event,
-                        time_of_event,
-                        venue,
-                        description_insights
-                    FROM events
-                    ORDER BY embedding <-> (:vec)::vector
-                    LIMIT 5
-                """),
-                {"vec": embedding},
-            )
+            sql_where_clauses = []
+            sql_params = {
+                "user_query": user_query,
+                "user_vector": user_vector_str,  # Pass the string representation
+                "vector_weight": vector_weight,
+                "trigram_weight": trigram_weight,
+                "vector_threshold": vector_threshold,
+            }
 
+            if date_filter:
+                if date_filter == "NOW()":
+                    sql_where_clauses.append("date_of_event > NOW()")
+                elif "BETWEEN" in date_filter:
+                    sql_where_clauses.append(date_filter)
+                else:
+                    sql_where_clauses.append(f"date_of_event > '{date_filter}'")
 
+            if fee_filter is not None:
+                if fee_filter == 0:
+                    sql_where_clauses.append("registration_fee = 0")
+                else:
+                    sql_where_clauses.append(f"registration_fee <= {fee_filter}")
+
+            # Always include fuzzy and vector search
+            search_clauses = [
+                "search_text % :user_query",
+                "embedding <=> :user_vector < :vector_threshold",
+            ]
+            sql_where_clauses.append(f"({' OR '.join(search_clauses)})")
+
+            where_clause = "WHERE " + " AND ".join(sql_where_clauses) if sql_where_clauses else ""
+
+            # Always calculate final_score
+            sql_query = f"""
+                SELECT
+                    name_of_event,
+                    date_of_event,
+                    registration_fee,
+                    ( (1 - (embedding <=> :user_vector)) * :vector_weight ) + ( similarity(search_text, :user_query) * :trigram_weight ) as final_score
+                FROM events
+                {where_clause}
+                ORDER BY final_score DESC
+                LIMIT 5;
+                """
+            
+            sql = text(sql_query)
+            result = conn.execute(sql, sql_params)
             rows = result.fetchall()
 
         if not rows:
-            return ["No matching events found"]
+            return []
 
         return [
             f"📌 {r[0]}\n"
-            f"• Domain: {r[1]}\n"
-            f"• Date: {r[2]}\n"
-            f"• Time: {r[3]}\n"
-            f"• Venue: {r[4]}\n"
-            f"• Details: {r[5]}"
+            f"• Date: {r[1]}\n"
+            f"• Fee: {r[2]}\n"
+            f"• Score: {r[3]:.2f}"
             for r in rows
         ]
 
     except Exception as e:
-        print("❌ Vector DB error:", e)
-        return ["Vector search failed"]
+        print("❌ Hybrid query error:", e)
+        return []
 
 
 # ────────────────────────────────────────────────

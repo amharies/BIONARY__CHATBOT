@@ -139,6 +139,8 @@ def add_event_endpoint(
 # ────────────────────────────────────────────────
 # STARTUP
 # ────────────────────────────────────────────────
+from database import enable_pg_trgm
+enable_pg_trgm()
 Base.metadata.create_all(bind=engine)
 create_default_user()
 

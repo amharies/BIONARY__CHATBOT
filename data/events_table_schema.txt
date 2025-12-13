@@ -1,0 +1,31 @@
+The serial_no column is of type SERIAL.
+
+The name_of_event column is of type TEXT.
+
+The event_domain column is of type TEXT.
+
+The date_of_event column is of type DATE.
+
+The time_of_event column is of type TEXT.
+
+The venue column is of type TEXT.
+
+The mode_of_event column is of type TEXT.
+
+The registration_fee column is of type INTEGER.
+
+The speakers column is of type TEXT.
+
+The faculty_coordinators column is of type TEXT.
+
+The student_coordinators column is of type TEXT.
+
+The perks column is of type TEXT.
+
+The collaboration column is of type TEXT.
+
+The description_insights column is of type TEXT.
+
+The search_text column is of type TEXT.
+
+The embedding column is of type VECTOR.

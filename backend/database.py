@@ -2,7 +2,7 @@
 import os
 from dotenv import load_dotenv
 
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, declarative_base
 
 load_dotenv()
@@ -22,4 +22,10 @@ SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 # 🔴 THIS is what was missing / broken
 Base = declarative_base()
+
+
+def enable_pg_trgm():
+    with engine.connect() as connection:
+        connection.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm;"))
+        connection.commit()
 

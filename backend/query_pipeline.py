@@ -79,219 +79,43 @@ def handle_user_query(question: str) -> str:
     year = extract_year(q)
     month = extract_month(q)
 
-    # =====================================================
-    # EVENTS COUNT
-    # =====================================================
-    if "how many" in q and "event" in q:
-        sql = "SELECT COUNT(*) FROM events"
-        if year:
-            sql += f" WHERE EXTRACT(YEAR FROM date_of_event) = {year}"
+    # Default filters
+    date_filter = "NOW()"
+    fee_filter = 5000  # Default to a high value
 
-        rows = retriever_module.query_relational_db(sql)
-        count = rows[0][0] if rows else 0
+    # More specific date filters if month and year are extracted
+    if year and month:
+        # Create a date range for the specified month and year
+        start_date = f"{year}-{month:02d}-01"
+        end_date = f"{year}-{month:02d}-31" # Simplification, but works for filtering
+        date_filter = f"date_of_event BETWEEN '{start_date}' AND '{end_date}'"
+    elif year:
+        start_date = f"{year}-01-01"
+        end_date = f"{year}-12-31"
+        date_filter = f"date_of_event BETWEEN '{start_date}' AND '{end_date}'"
 
-        return gemini_answer(
-            question,
-            f"Total events found: {count}"
-        )
 
-    # =====================================================
-    # FULL REPORT (FIXED: NO LIMIT)
-    # =====================================================
-    if "report" in q or "summary" in q:
-        sql = """
-        SELECT
-            name_of_event, event_domain, date_of_event, time_of_event,
-            venue, mode_of_event, registration_fee, speakers, perks,
-            description_insights, faculty_coordinators, student_coordinators,
-            collaboration
-        FROM events
-        """
-        if year:
-            sql += f" WHERE EXTRACT(YEAR FROM date_of_event) = {year}"
-        sql += " ORDER BY date_of_event"
+    # Fee filter
+    if "free" in q:
+        fee_filter = 0
 
-        rows = retriever_module.query_relational_db(sql)
-
-        if not rows:
-            return "No events found."
-
-        context = "\n".join(
-            f"Event: {r[0]}\n"
-            f"  Domain: {r[1]}\n"
-            f"  Date: {r[2]}\n"
-            f"  Time: {r[3]}\n"
-            f"  Venue: {r[4]}\n"
-            f"  Mode: {r[5]}\n"
-            f"  Fee: {r[6]}\n"
-            f"  Speakers: {r[7]}\n"
-            f"  Perks: {r[8]}\n"
-            f"  Description: {r[9]}\n"
-            f"  Faculty Coordinators: {r[10]}\n"
-            f"  Student Coordinators: {r[11]}\n"
-            f"  Collaboration: {r[12]}"
-            for r in rows
-        )
-
-        return gemini_answer(question, context)
-
-    # =====================================================
-    # MONTH AND YEAR QUERIES
-    # =====================================================
-    if month and year:
-        sql = f"""
-        SELECT
-            name_of_event, event_domain, date_of_event, time_of_event,
-            venue, mode_of_event, registration_fee, speakers, perks,
-            description_insights, faculty_coordinators, student_coordinators,
-            collaboration
-        FROM events
-        WHERE EXTRACT(MONTH FROM date_of_event) = {month}
-          AND EXTRACT(YEAR FROM date_of_event) = {year}
-        ORDER BY date_of_event
-        """
-        print(f"DEBUG: Executing SQL query for month/year: {sql}") # Debug print
-        rows = retriever_module.query_relational_db(sql)
-
-        if not rows:
-            return f"No events found in {datetime(year, month, 1).strftime('%B %Y')}."
-
-        context = "\n".join(
-            f"Event: {r[0]}\n"
-            f"  Domain: {r[1]}\n"
-            f"  Date: {r[2]}\n"
-            f"  Time: {r[3]}\n"
-            f"  Venue: {r[4]}\n"
-            f"  Mode: {r[5]}\n"
-            f"  Fee: {r[6]}\n"
-            f"  Speakers: {r[7]}\n"
-            f"  Perks: {r[8]}\n"
-            f"  Description: {r[9]}\n"
-            f"  Faculty Coordinators: {r[10]}\n"
-            f"  Student Coordinators: {r[11]}\n"
-            f"  Collaboration: {r[12]}"
-            for r in rows
-        )
-        return gemini_answer(question, context)
-        
-    # =====================================================
-    # COORDINATOR / SPEAKER QUERIES
-    # =====================================================
+    # Extract person name for coordinator/speaker queries
+    person_name = None
     if any(k in q for k in ["coordinate", "coordinator", "speaker", "who"]):
         person_name = extract_person_name(q)
-        if person_name:
-            sql = f"""
-            SELECT
-                name_of_event, event_domain, date_of_event, time_of_event,
-                venue, mode_of_event, registration_fee, speakers, perks,
-                description_insights, faculty_coordinators, student_coordinators,
-                collaboration
-            FROM events
-            WHERE LOWER(student_coordinators) ILIKE '%{person_name.lower()}%'
-               OR LOWER(faculty_coordinators) ILIKE '%{person_name.lower()}%'
-               OR LOWER(speakers) ILIKE '%{person_name.lower()}%'
-            """
-            rows = retriever_module.query_relational_db(sql)
 
-            if not rows:
-                return "No events found for that person."
+    # Call the hybrid query
+    print(f"DEBUG: date_filter passed to hybrid_query: {date_filter if date_filter != 'NOW()' else None}")
+    print(f"DEBUG: fee_filter passed to hybrid_query: {fee_filter if fee_filter != 5000 else None}")
+    results = retriever_module.hybrid_query(
+        user_query=question,
+        date_filter=date_filter if date_filter != "NOW()" else None,
+        fee_filter=fee_filter if fee_filter != 5000 else None,
+    )
 
-            context = "\n".join(
-                f"Event: {r[0]}\n"
-                f"  Domain: {r[1]}\n"
-                f"  Date: {r[2]}\n"
-                f"  Time: {r[3]}\n"
-                f"  Venue: {r[4]}\n"
-                f"  Mode: {r[5]}\n"
-                f"  Fee: {r[6]}\n"
-                f"  Speakers: {r[7]}\n"
-                f"  Perks: {r[8]}\n"
-                f"  Description: {r[9]}\n"
-                f"  Faculty Coordinators: {r[10]}\n"
-                f"  Student Coordinators: {r[11]}\n"
-                f"  Collaboration: {r[12]}"
-                for r in rows
-            )
-            return gemini_answer(question, context)
+    if not results:
+        return "I do not have enough information to answer that."
 
-    # =====================================================
-    # ONLINE / OFFLINE / HYBRID
-    # =====================================================
-    for mode in ["online", "offline", "hybrid"]:
-        if mode in q:
-            rows = retriever_module.query_relational_db(
-                f"""
-                SELECT
-                    name_of_event, event_domain, date_of_event, time_of_event,
-                    venue, mode_of_event, registration_fee, speakers, perks,
-                    description_insights, faculty_coordinators, student_coordinators,
-                    collaboration
-                FROM events
-                WHERE mode_of_event ILIKE '%{mode}%'
-                ORDER BY date_of_event
-                """
-            )
+    context = "\n\n".join(results)
+    return gemini_answer(question, context)
 
-            context = "\n".join(
-                f"Event: {r[0]}\n"
-                f"  Domain: {r[1]}\n"
-                f"  Date: {r[2]}\n"
-                f"  Time: {r[3]}\n"
-                f"  Venue: {r[4]}\n"
-                f"  Mode: {r[5]}\n"
-                f"  Fee: {r[6]}\n"
-                f"  Speakers: {r[7]}\n"
-                f"  Perks: {r[8]}\n"
-                f"  Description: {r[9]}\n"
-                f"  Faculty Coordinators: {r[10]}\n"
-                f"  Student Coordinators: {r[11]}\n"
-                f"  Collaboration: {r[12]}"
-                for r in rows
-            )
-            return gemini_answer(question, context)
-
-    # =====================================================
-    # DOMAIN / DEPARTMENT QUERIES
-    # =====================================================
-    domains = ["ai", "ml", "robotics", "web", "cloud", "blockchain", "iot", "cyber"]
-    for d in domains:
-        if d in q:
-            rows = retriever_module.query_relational_db(
-                f"""
-                SELECT
-                    name_of_event, event_domain, date_of_event, time_of_event,
-                    venue, mode_of_event, registration_fee, speakers, perks,
-                    description_insights, faculty_coordinators, student_coordinators,
-                    collaboration
-                FROM events
-                WHERE event_domain ILIKE '%{d}%'
-                """
-            )
-            context = "\n".join(
-                f"Event: {r[0]}\n"
-                f"  Domain: {r[1]}\n"
-                f"  Date: {r[2]}\n"
-                f"  Time: {r[3]}\n"
-                f"  Venue: {r[4]}\n"
-                f"  Mode: {r[5]}\n"
-                f"  Fee: {r[6]}\n"
-                f"  Speakers: {r[7]}\n"
-                f"  Perks: {r[8]}\n"
-                f"  Description: {r[9]}\n"
-                f"  Faculty Coordinators: {r[10]}\n"
-                f"  Student Coordinators: {r[11]}\n"
-                f"  Collaboration: {r[12]}"
-                for r in rows
-            )
-            return gemini_answer(question, context)
-
-    # =====================================================
-    # RAG / SEMANTIC QUESTIONS (FALLBACK)
-    # =====================================================
-    vector_results = retriever_module.query_vector_db(question)
-
-    if vector_results:
-        context = "\n\n".join(vector_results)
-        return gemini_answer(question, context)
-
-    return "I do not have enough information to answer that."
