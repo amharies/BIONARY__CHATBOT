@@ -56,3 +56,7 @@ The admin panel for adding new events had several usability issues. It allowed a
 6. **Bug fix (`frontend/app/page.tsx`):**
     *   **Change:** Corrected the `Link` component usage and added `useState` import.
     *   **Reasoning:** To fix the build error and ensure proper client-side navigation.
+
+7. **Bug fix (`backend/query_pipeline.py`):**
+    *   **Change:** Removed debugging `print` statement.
+    *   **Reasoning:** The `AttributeError` was resolved, and the debugging `print` statement is no longer needed.

@@ -80,8 +80,18 @@ def hybrid_query(
             sql_query = f"""
                 SELECT
                     name_of_event,
+                    event_domain,
                     date_of_event,
+                    time_of_event,
+                    venue,
+                    mode_of_event,
                     registration_fee,
+                    speakers,
+                    faculty_coordinators,
+                    student_coordinators,
+                    perks,
+                    collaboration,
+                    description_insights,
                     ( (1 - (embedding <=> :user_vector)) * :vector_weight ) + ( similarity(search_text, :user_query) * :trigram_weight ) as final_score
                 FROM events
                 {where_clause}
@@ -89,20 +99,20 @@ def hybrid_query(
                 LIMIT 5;
                 """
             
+            print("─" * 80)
+            print("HYBRID SEARCH (VECTOR + TRIGRAM)")
+            print(sql_query)
+            print("─" * 80)
+
             sql = text(sql_query)
             result = conn.execute(sql, sql_params)
-            rows = result.fetchall()
+            rows = result.mappings().fetchall()  # Use mappings to get dicts
 
         if not rows:
             return []
 
-        return [
-            f"📌 {r[0]}\n"
-            f"• Date: {r[1]}\n"
-            f"• Fee: {r[2]}\n"
-            f"• Score: {r[3]:.2f}"
-            for r in rows
-        ]
+        # Convert rows to a list of dictionaries
+        return [dict(row) for row in rows]
 
     except Exception as e:
         print("❌ Hybrid query error:", e)
