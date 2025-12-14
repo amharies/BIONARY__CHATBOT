@@ -4,6 +4,8 @@ from sqlalchemy import text
 from sentence_transformers import SentenceTransformer
 import numpy as np
 
+from typing import Optional
+
 from database import engine
 
 load_dotenv()
