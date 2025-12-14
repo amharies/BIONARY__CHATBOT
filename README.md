@@ -58,6 +58,20 @@ The frontend is a Next.js application built with React that provides a clean and
 *   Python 3.7+ and pip (for the backend)
 *   PostgreSQL (with the `pgvector` and `pg_trgm` extensions enabled)
 
+### Environment Variables (.env)
+
+Create a `.env` file in the `backend/` directory with the following content:
+
+```
+DATABASE_URL="postgresql://user:password@host:port/database_name"
+GEMINI_API_KEY="YOUR_GEMINI_API_KEY"
+SECRET_KEY="YOUR_SECRET_KEY_FOR_JWT"
+```
+
+*   **`DATABASE_URL`**: Connection string for your PostgreSQL database.
+*   **`GEMINI_API_KEY`**: Your API key for accessing the Google Gemini language model.
+*   **`SECRET_KEY`**: A strong, random secret key used for signing JWT tokens. You can generate one using `openssl rand -hex 32`.
+
 ### Database Setup
 
 1.  **Install Extensions:**

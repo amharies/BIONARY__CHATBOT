@@ -81,3 +81,16 @@ The previous implementation had limitations in event retrieval. General queries 
 3.  **Score Removal for Specific Events (`backend/query_pipeline.py`):**
     *   **Change:** Modified the context formatting logic in `handle_user_query` to exclude the `final_score` when an exact event is retrieved.
     *   **Reasoning:** The relevance score is not meaningful when an exact match is found.
+
+**Update 2025-12-15 (Documentation)**
+
+**Feature:** Improved `.env` file documentation.
+
+**Reasoning:**
+Users need clear guidance on setting up environment variables to correctly run the application.
+
+**Changes Made:**
+
+1.  **`.env` File Instructions (`README.md`):**
+    *   **Change:** Added a new section in `README.md` under "Getting Started" explaining the required `.env` variables (`DATABASE_URL`, `GEMINI_API_KEY`, `SECRET_KEY`) and providing an example.
+    *   **Reasoning:** To provide comprehensive setup instructions for new users.
