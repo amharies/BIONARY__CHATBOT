@@ -54,18 +54,23 @@ def gemini_answer(question, context):
     Gemini ADDS language, NOT facts.
     """
     prompt = f"""
-You are a university knowledge assistant.
+You are a helpful university knowledge assistant. Your goal is to provide clear, comprehensive, and well-formatted answers to user questions based on the event data provided.
 
-You must answer the question ONLY using the information below.
-If information is missing, say so clearly.
+You must answer the question *ONLY* using the information provided in the "Information" section.
+If the information is missing or insufficient to answer the question, state that clearly.
 
-Question:
+When presenting the information, use markdown to improve readability. For example:
+- Use headings (`## Title`) for event names.
+- Use bolding (`**Label:**`) for field names (like **Date:**, **Venue:**, **Speakers:**).
+- Use bullet points (`-`) for lists of items like speakers or coordinators.
+
+**Question:**
 {question}
 
-Information:
+**Information:**
 {context}
 
-Answer clearly, professionally, and naturally.
+**Answer:**
 """
     response = llm.generate_content(prompt)
     return response.text.strip()
@@ -105,8 +110,6 @@ def handle_user_query(question: str) -> str:
         person_name = extract_person_name(q)
 
     # Call the hybrid query
-    print(f"DEBUG: date_filter passed to hybrid_query: {date_filter if date_filter != 'NOW()' else None}")
-    print(f"DEBUG: fee_filter passed to hybrid_query: {fee_filter if fee_filter != 5000 else None}")
     results = retriever_module.hybrid_query(
         user_query=question,
         date_filter=date_filter if date_filter != "NOW()" else None,
@@ -116,5 +119,35 @@ def handle_user_query(question: str) -> str:
     if not results:
         return "I do not have enough information to answer that."
 
-    context = "\n\n".join(results)
+    # Format the context from the list of dictionaries
+    context_parts = []
+    for event in results:
+        details = [f"## {event.get('name_of_event', 'N/A')}"]
+        if event.get('date_of_event'):
+            details.append(f"**Date:** {event['date_of_event']}")
+        if event.get('time_of_event'):
+            details.append(f"**Time:** {event['time_of_event']}")
+        if event.get('venue'):
+            details.append(f"**Venue:** {event['venue']}")
+        if event.get('mode_of_event'):
+            details.append(f"**Mode:** {event['mode_of_event']}")
+        if event.get('registration_fee') is not None:
+            details.append(f"**Registration Fee:** {event['registration_fee']}")
+        if event.get('speakers'):
+            details.append(f"**Speakers:** {event['speakers']}")
+        if event.get('faculty_coordinators'):
+            details.append(f"**Faculty Coordinators:** {event['faculty_coordinators']}")
+        if event.get('student_coordinators'):
+            details.append(f"**Student Coordinators:** {event['student_coordinators']}")
+        if event.get('perks'):
+            details.append(f"**Perks:** {event['perks']}")
+        if event.get('collaboration'):
+            details.append(f"**Collaboration:** {event['collaboration']}")
+        if event.get('description_insights'):
+            details.append(f"**Description:** {event['description_insights']}")
+        if event.get('final_score'):
+            details.append(f"**Relevance Score:** {event['final_score']:.2f}")
+        context_parts.append("\n".join(details))
+
+    context = "\n\n---\n\n".join(context_parts)
     return gemini_answer(question, context)

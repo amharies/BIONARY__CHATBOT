@@ -1,13 +1,17 @@
 # Bionary Fullstack Agent
 
-This project is a fullstack application with a React-based frontend and a Python-based backend.
+## Overview
+
+This project is a full-stack "Retrieval-Augmented Generation" (RAG) application designed to answer user questions about university club events. It features a React/Next.js frontend and a Python/FastAPI backend that leverages a PostgreSQL database with vector support and the Google Gemini language model.
 
 ## Project Structure
 
 The project is divided into two main parts:
 
-- `frontend/`: A [Next.js](https://nextjs.org/) application.
-- `backend/`: A [FastAPI](https://fastapi.tiangolo.com/) application.
+- `frontend/`: A [Next.js](https://nextjs.org/) application that provides the user interface.
+- `backend/`: A [FastAPI](https://fastapi.tiangolo.com/) application that handles the core logic.
+
+---
 
 ## Backend
 
@@ -15,34 +19,36 @@ The backend is a FastAPI application that provides a chat API and an API for add
 
 ### Features
 
-- **Chat API (`/api/chat`):** This endpoint uses a Retrieval-Augmented Generation (RAG) pipeline to answer questions about university events. It takes a natural language query, retrieves relevant data from a PostgreSQL database, and uses the Google Gemini language model to generate an answer.
-- **Add Event API (`/api/add-event`):** This is a protected endpoint for adding new events. It generates and stores vector embeddings for the events to make them searchable.
-- **Authentication:** Authentication is handled using JSON Web Tokens (JWT).
+- **Chat API (`/api/chat`):** This endpoint uses a RAG pipeline to answer questions about university events. It takes a natural language query, performs a hybrid search (semantic vector search + trigram fuzzy search) on a PostgreSQL database, and uses the Google Gemini language model to generate a natural, well-formatted answer.
+- **Add Event API (`/api/add-event`):** This is a protected endpoint for adding new events to the database. It generates and stores vector embeddings for the event data to enable semantic search.
+- **Authentication:** Authentication for protected endpoints is handled using JSON Web Tokens (JWT).
 
 ### Technologies
 
-- **FastAPI:** A modern, fast (high-performance) web framework for building APIs with Python 3.7+ based on standard Python type hints.
-- **PostgreSQL:** A powerful, open source object-relational database system.
-- **pgvector:** An extension for PostgreSQL that enables storing and querying of vector embeddings.
-- **Google Gemini:** A family of large language models developed by Google AI.
+- **FastAPI:** A modern, fast web framework for building APIs with Python.
+- **PostgreSQL with `pgvector` and `pg_trgm`:** A powerful, open-source object-relational database used for storing event data, vector embeddings (`pgvector`), and enabling efficient fuzzy text search (`pg_trgm`).
+- **Sentence-Transformers:** A Python library for generating high-quality sentence and text embeddings.
+- **Google Gemini:** A family of large language models from Google AI used for generating the final answer.
+
+---
 
 ## Frontend
 
-The frontend is a Next.js application built with React.
+The frontend is a Next.js application built with React that provides a clean and intuitive chat interface for users to interact with the agent.
 
-*Further details about the frontend will be added here.*
+### Features
+- **Chat Interface:** A simple, modern interface for sending queries to the backend and displaying the agent's response.
+- **Loading State:** Provides visual feedback to the user while the agent is processing a query.
+- **Admin Link:** A link to a separate admin dashboard for managing events.
 
-## Utilities
+### Technologies
 
-A Streamlit application is available at `pages/new_event.py`. This standalone script provides a user-friendly interface for inputting event details, which are then saved to the database and indexed for semantic search.
+- **Next.js:** A React framework for building server-side rendered and static web applications.
+- **React:** A JavaScript library for building user interfaces.
+- **axios:** A promise-based HTTP client for making requests to the backend API.
+- **Tailwind CSS:** A utility-first CSS framework for rapidly building custom designs.
 
-### Running the Event Management Utility
-
-To run the Streamlit application, execute the following command:
-
-```bash
-streamlit run pages/new_event.py
-```
+---
 
 ## Getting Started
 
@@ -50,7 +56,60 @@ streamlit run pages/new_event.py
 
 *   Node.js and npm (for the frontend)
 *   Python 3.7+ and pip (for the backend)
-*   PostgreSQL (with the `pgvector` extension)
+*   PostgreSQL (with the `pgvector` and `pg_trgm` extensions enabled)
+
+### Database Setup
+
+1.  **Install Extensions:**
+    Connect to your PostgreSQL database and run the following commands to enable the necessary extensions:
+    ```sql
+    CREATE EXTENSION IF NOT EXISTS vector;
+    CREATE EXTENSION IF NOT EXISTS pg_trgm;
+    ```
+
+2.  **Create the `events` Table:**
+    You will need to create the `events` table. The schema is defined by the columns in `data/events_table_schema.txt`.
+
+3.  **Create the Search Trigger Function:**
+    This function automatically concatenates relevant fields into the `search_text` column, which is used for trigram-based fuzzy search.
+    ```sql
+    CREATE OR REPLACE FUNCTION update_events_search_text()
+    RETURNS TRIGGER AS $$
+    BEGIN
+        NEW.search_text := concat_ws(' ', 
+            -- Use NULLIF to turn "NaN" text into real NULLs so they get skipped
+            NULLIF(NEW.name_of_event::text, 'NaN'),
+            NULLIF(NEW.event_domain::text, 'NaN'),
+            
+            -- Date doesn't have "NaN", so just text is fine
+            NEW.date_of_event::text,
+            
+            NULLIF(NEW.time_of_event::text, 'NaN'),
+            NULLIF(NEW.venue::text, 'NaN'),
+            NULLIF(NEW.mode_of_event::text, 'NaN'),
+            
+            -- Turn '0' fee into empty string so it doesn't clutter search
+            NULLIF(NEW.registration_fee::text, '0'),
+            
+            NULLIF(NEW.speakers::text, 'NaN'),
+            NULLIF(NEW.faculty_coordinators::text, 'NaN'),
+            NULLIF(NEW.student_coordinators::text, 'NaN'),
+            NULLIF(NEW.perks::text, 'NaN'),
+            NULLIF(NEW.collaboration::text, 'NaN'),
+            NULLIF(NEW.description_insights::text, 'NaN')
+        );
+        RETURN NEW;
+    END;
+    $$ LANGUAGE plpgsql;
+    ```
+
+4.  **Create the GIN Index:**
+    This index speeds up the trigram fuzzy search on the `search_text` column.
+    ```sql
+    CREATE INDEX CONCURRENTLY trgm_idx_events_search_text 
+    ON events 
+    USING GIN (search_text gin_trgm_ops);
+    ```
 
 ### Installation
 
