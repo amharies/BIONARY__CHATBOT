@@ -12,9 +12,7 @@ from config import SECRET_KEY, ALGORITHM, ACCESS_TOKEN_EXPIRE_MINUTES
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
-# ─────────────────────────────────────
-# DB DEPENDENCY
-# ─────────────────────────────────────
+# DB Dependency
 def get_db():
     db = SessionLocal()
     try:
@@ -23,9 +21,7 @@ def get_db():
         db.close()
 
 
-# ─────────────────────────────────────
-# TOKEN CREATION
-# ─────────────────────────────────────
+# Token Creation
 def create_access_token(username: str):
     payload = {
         "sub": username,
@@ -34,9 +30,7 @@ def create_access_token(username: str):
     return jwt.encode(payload, SECRET_KEY, algorithm=ALGORITHM)
 
 
-# ─────────────────────────────────────
-# TOKEN VERIFICATION (USED BY PROTECTED ROUTES)
-# ─────────────────────────────────────
+# Token Verification (Used by protected routes)
 def get_current_user(
     authorization: str = Header(None),
     db: Session = Depends(get_db),
@@ -61,9 +55,7 @@ def get_current_user(
     return user
 
 
-# ─────────────────────────────────────
-# LOGIN
-# ─────────────────────────────────────
+# Login
 @router.post("/login")
 def login(payload: dict, db: Session = Depends(get_db)):
     username = payload.get("username")

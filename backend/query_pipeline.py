@@ -8,9 +8,7 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
-# ────────────────────────────────────────────────
-# GEMINI CONFIG
-# ────────────────────────────────────────────────
+# Gemini Configuration
 API_KEY = os.environ.get("GEMINI_API_KEY")
 if not API_KEY:
     raise RuntimeError("GEMINI_API_KEY not set")
@@ -20,9 +18,7 @@ llm = genai.GenerativeModel("gemini-2.5-flash-preview-09-2025")
 
 CURRENT_YEAR = datetime.now().year
 
-# ────────────────────────────────────────────────
-# HELPERS
-# ────────────────────────────────────────────────
+# Helpers
 def extract_year(text):
     m = re.search(r"(19|20)\d{2}", text)
     return int(m.group()) if m else None
@@ -48,6 +44,21 @@ def extract_person_name(text):
         
     # The remaining text should be the name
     return text.strip()
+
+def extract_keywords(text: str) -> str:
+    """
+    Extracts relevant keywords from a natural language query for better fuzzy matching.
+    Removes common stop words and question phrases.
+    """
+    stop_words = [
+        "give", "details", "about", "events", "conducted", "by", "show", "list", 
+        "me", "tell", "what", "where", "when", "who", "is", "the", "an", "a", "of", "in", "on", "at", 
+        "for", "to", "from", "with", "all", "every", "some", "any"
+    ]
+    
+    words = text.lower().split()
+    keywords = [w for w in words if w not in stop_words]
+    return " ".join(keywords)
 
 def gemini_answer(question, context):
     """
@@ -76,9 +87,7 @@ When presenting the information, use markdown to improve readability. For exampl
     return response.text.strip()
 
 
-# ────────────────────────────────────────────────
-# MAIN AGENT
-# ────────────────────────────────────────────────
+# Main Agent Logic
 def handle_user_query(question: str) -> str:
     q = question.lower()
     year = extract_year(q)
@@ -141,9 +150,12 @@ def handle_user_query(question: str) -> str:
         return gemini_answer(question, context)
 
     # If no specific event is found, proceed with the hybrid search
-    limit = None if "all" in q or "summary" in q else 5
+    # Limit logic: User requested no limit by default
+    limit = None
+    fuzzy_query = extract_keywords(question)
     results = retriever_module.hybrid_query(
         user_query=question,
+        fuzzy_query=fuzzy_query,
         date_filter=date_filter if date_filter != "NOW()" else None,
         fee_filter=fee_filter if fee_filter != 5000 else None,
         limit=limit,

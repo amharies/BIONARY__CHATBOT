@@ -10,17 +10,13 @@ from database import engine
 
 load_dotenv()
 
-# ────────────────────────────────────────────────
-# EMBEDDING MODEL
-# ────────────────────────────────────────────────
+# Embedding Model
 model = SentenceTransformer(
     "BAAI/bge-base-en-v1.5",
     trust_remote_code=True
 )
 
-# ────────────────────────────────────────────────
-# HYBRID QUERY
-# ────────────────────────────────────────────────
+# Hybrid Query
 def hybrid_query(
     user_query: str,
     date_filter: Optional[str] = None,
@@ -29,6 +25,7 @@ def hybrid_query(
     trigram_weight: float = 0.3,
     vector_threshold: float = 0.7,
     limit: Optional[int] = 5,
+    fuzzy_query: Optional[str] = None,
 ):
     """
     Performs a hybrid search on the events table using a combination of
@@ -45,9 +42,12 @@ def hybrid_query(
 
         # 2. Construct and execute the hybrid SQL query
         with engine.connect() as conn:
+            # Set a lower threshold for fuzzy matching to catch typos like "jefery"
+            conn.execute(text("SET pg_trgm.word_similarity_threshold = 0.3;"))
+
             sql_where_clauses = []
             sql_params = {
-                "user_query": user_query,
+                "user_query": fuzzy_query if fuzzy_query else user_query,
                 "user_vector": user_vector_str,  # Pass the string representation
                 "vector_weight": vector_weight,
                 "trigram_weight": trigram_weight,
@@ -70,7 +70,7 @@ def hybrid_query(
 
             # Always include fuzzy and vector search
             search_clauses = [
-                "search_text % :user_query",
+                ":user_query <% LOWER(search_text)",
                 "embedding <=> :user_vector < :vector_threshold",
             ]
             sql_where_clauses.append(f"({' OR '.join(search_clauses)})")
@@ -95,17 +95,17 @@ def hybrid_query(
                     perks,
                     collaboration,
                     description_insights,
-                    ( (1 - (embedding <=> :user_vector)) * :vector_weight ) + ( similarity(search_text, :user_query) * :trigram_weight ) as final_score
+                    ( (1 - (embedding <=> :user_vector)) * :vector_weight ) + ( word_similarity(:user_query, LOWER(search_text)) * :trigram_weight ) as final_score
                 FROM events
                 {where_clause}
                 ORDER BY final_score DESC
                 {limit_clause};
                 """
             
-            print("─" * 80)
+            print("-" * 80)
             print("HYBRID SEARCH (VECTOR + TRIGRAM)")
             print(sql_query)
-            print("─" * 80)
+            print("-" * 80)
 
             sql = text(sql_query)
             result = conn.execute(sql, sql_params)
@@ -169,9 +169,7 @@ def query_fuzzy_event_name(text_query: str):
     except Exception:
         return []
 
-# ────────────────────────────────────────────────
-# INSERT NEW EVENT (THIS WAS MISSING 🚨)
-# ────────────────────────────────────────────────
+# Insert New Event
 def add_new_event(form_data: dict):
     try:
         search_text = (
@@ -185,7 +183,7 @@ def add_new_event(form_data: dict):
         if isinstance(embedding, np.ndarray):
             embedding = embedding.tolist()
 
-        with engine.begin() as conn:  # ✅ auto-commit
+        with engine.begin() as conn:  # auto-commit
             conn.execute(
                 text(
                     """

@@ -20,7 +20,7 @@ engine = create_engine(
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# 🔴 THIS is what was missing / broken
+# This is what was missing / broken
 Base = declarative_base()
 
 

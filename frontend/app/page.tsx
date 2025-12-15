@@ -37,7 +37,7 @@ export default function ChatPage() {
     >
       {/* TITLE */}
       <h1 className="text-4xl font-bold mb-2"
-          style={{ color: "var(--violet)", textShadow: "0 0 10px rgba(123,31,162,0.6)" }}>
+        style={{ color: "var(--violet)", textShadow: "0 0 10px rgba(123,31,162,0.6)" }}>
         Bionary Search Agent
       </h1>
 
@@ -77,7 +77,7 @@ export default function ChatPage() {
               transition
             "
           >
-            {loading ? "Thinking…" : "Ask"}
+            {loading ? "Thinking..." : "Ask"}
           </button>
         </form>
 

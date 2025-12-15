@@ -12,9 +12,7 @@ from database import Base, engine, SessionLocal
 from models import User
 from auth import router as auth_router
 
-# ────────────────────────────────────────────────
-# LOAD ENV
-# ────────────────────────────────────────────────
+# Load Environment Variables
 load_dotenv()
 
 # Your existing logic
@@ -23,9 +21,7 @@ import frontend  # python module, not nextjs
 
 from config import SECRET_KEY, ALGORITHM
 
-# ────────────────────────────────────────────────
-# APP
-# ────────────────────────────────────────────────
+# App Initialization
 app = FastAPI()
 
 # CORS for Next.js
@@ -42,9 +38,7 @@ app.include_router(auth_router)
 
 security = HTTPBearer()
 
-# ────────────────────────────────────────────────
-# TOKEN VERIFICATION DEPENDENCY
-# ────────────────────────────────────────────────
+# Token Verification Dependency
 def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
@@ -62,9 +56,7 @@ def verify_token(
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-# ────────────────────────────────────────────────
-# DB INIT
-# ────────────────────────────────────────────────
+# Database Initialization
 def create_default_user():
     db = SessionLocal()
     try:
@@ -80,9 +72,7 @@ def create_default_user():
     finally:
         db.close()
 
-# ────────────────────────────────────────────────
-# DATA MODELS
-# ────────────────────────────────────────────────
+# Data Models
 class ChatRequest(BaseModel):
     query: str
 
@@ -111,9 +101,7 @@ class EventData(BaseModel):
                     values[key] = "NaN"
         return values
 
-# ────────────────────────────────────────────────
-# ROUTES
-# ────────────────────────────────────────────────
+# Routes
 @app.get("/")
 def health_check():
     return {"status": "Club Knowledge Agent is active"}
@@ -128,7 +116,7 @@ def chat_endpoint(request: ChatRequest):
 
     except Exception as e:
         import traceback
-        traceback.print_exc()   # 🔥 THIS IS THE KEY PART
+        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
 
 
@@ -150,9 +138,7 @@ def verify_token_endpoint(_: dict = Depends(verify_token)):
 
 
 
-# ────────────────────────────────────────────────
-# STARTUP
-# ────────────────────────────────────────────────
+# Startup
 from database import enable_pg_trgm
 enable_pg_trgm()
 Base.metadata.create_all(bind=engine)

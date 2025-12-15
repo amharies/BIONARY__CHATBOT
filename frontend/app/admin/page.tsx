@@ -7,7 +7,7 @@ import axios from "axios";
 export default function AdminPage() {
   const router = useRouter();
 
-  /* ─────────────── AUTH GUARD ─────────────── */
+  /* Auth Guard */
   useEffect(() => {
     const verify = async () => {
       const token = localStorage.getItem("token");
@@ -38,7 +38,7 @@ export default function AdminPage() {
     router.replace("/login");
   };
 
-  /* ─────────────── FORM STATE ─────────────── */
+  /* Form State */
   const [formData, setFormData] = useState({
     name_of_event: "",
     event_domain: "",
@@ -66,7 +66,7 @@ export default function AdminPage() {
     setFormData({ ...formData, [e.target.name]: e.target.value });
   };
 
-  /* ─────────────── SUBMIT ─────────────── */
+  /* Submit */
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -98,7 +98,7 @@ export default function AdminPage() {
     }
   };
 
-  /* ─────────────── UI (DARK THEME VERSION) ─────────────── */
+  /* UI (Dark Theme Version) */
   return (
     <div
       className="min-h-screen p-8"
@@ -250,7 +250,7 @@ export default function AdminPage() {
               disabled:opacity-50
             "
           >
-            {loading ? "Saving…" : "Submit Event"}
+            {loading ? "Saving..." : "Submit Event"}
           </button>
         </form>
       </div>
