@@ -121,9 +121,9 @@ def health_check():
 @app.post("/api/chat")
 def chat_endpoint(request: ChatRequest):
     try:
-        print("➡️ Incoming query:", request.query)
+        print("Incoming query:", request.query)
         response = query_pipeline.handle_user_query(request.query)
-        print("✅ Agent response generated")
+        print("Agent response generated")
         return {"answer": response}
 
     except Exception as e:

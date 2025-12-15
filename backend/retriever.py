@@ -118,7 +118,7 @@ def hybrid_query(
         return [dict(row) for row in rows]
 
     except Exception as e:
-        print("❌ Hybrid query error:", e)
+        print("Hybrid query error:", e)
         return []
 
 def get_event_by_name(event_name: str):
@@ -132,7 +132,7 @@ def get_event_by_name(event_name: str):
             row = result.mappings().first()
         return dict(row) if row else None
     except Exception as e:
-        print("❌ Get event by name error:", e)
+        print("Get event by name error:", e)
         return None
 
 def query_fuzzy_event_name(text_query: str):
@@ -235,5 +235,5 @@ def add_new_event(form_data: dict):
         return {"status": "success"}
 
     except Exception as e:
-        print("❌ Insert error:", e)
+        print("Insert error:", e)
         return {"status": "error", "message": str(e)}
