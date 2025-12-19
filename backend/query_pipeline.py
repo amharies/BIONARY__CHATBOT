@@ -13,7 +13,7 @@ if not API_KEY:
     raise RuntimeError("GEMINI_API_KEY not set")
 
 genai.configure(api_key=API_KEY)
-llm = genai.GenerativeModel("gemini-2.5-flash-preview-09-2025")
+llm = genai.GenerativeModel("gemini-3-pro-preview")
 
 CURRENT_YEAR = datetime.now().year
 
@@ -49,34 +49,77 @@ def extract_event_name(text):
             return m.group(1).strip()
     return None
 
-def extract_keywords(text: str) -> str:
-    text = re.sub(r"[^a-z0-9\s]", "", text)
-    stop_words = {
-        "give","details","about","events","conducted","by","show","list",
-        "me","tell","what","where","when","who","is","the","an","a","of",
-        "in","on","at","for","to","from","with","all","every","some","any"
-    }
-    words = text.split()
-    keywords = [w for w in words if w not in stop_words]
-    return " ".join(keywords)
+def extract_search_terms(text: str) -> str:
+    """
+    Uses Gemini to extract the core search subject/entity from natural language.
+    Example: "what events did jeffry do" -> "Jeffry"
+    """
+    try:
+        prompt = f"""
+        Extract the main entity, person, or topic from this query for a database search.
+        Remove words like "events", "about", "did", "done", "show", etc.
+        Return ONLY the raw search term.
+        
+        Query: "{text}"
+        Search Term:
+        """
+        response = llm.generate_content(prompt)
+        cleaned = response.text.strip().replace('"', '')
+        return cleaned
+    except Exception:
+        # Fallback to simple cleaning if LLM fails
+        return re.sub(r"[^a-z0-9\s]", "", text.lower())
 
 def gemini_answer(question, context):
     prompt = f"""
-You are a helpful university knowledge assistant.
+    You are a university knowledge assistant that generates professional, clean, and readable event reports.
 
-Answer the question ONLY using the information provided.
-If information is insufficient, say so clearly.
+    Answer the user’s question using only the information provided in the context.
+    If information is insufficient or missing, state that clearly and gracefully.
 
-Use markdown formatting.
+    **Tone and behavior:**
+    - Use a concise, professional, and friendly tone.
+    - Avoid unnecessary explanations or filler.
+    - Sound like a reliable university portal, not a casual chatbot.
 
-Question:
-{question}
+    **Formatting rules (strict):**
+    - **Do NOT use markdown headers.**
+    - **Do NOT use bullet points.**
+    - Do not use decorative symbols or separators for visual design.
+    - Use **bold text** only when absolutely necessary, primarily for event titles.
+    - Do not overuse emphasis.
 
-Information:
-{context}
+    **Event layout principles:**
+    - Structure responses for fast scanning and clarity.
+    - Prefer structured formats over paragraphs when listing multiple events.
 
-Answer:
-"""
+    **Allowed presentation styles:**
+    - **Table format is preferred** when listing multiple events.
+    - Use clear column labels such as Event Name, Date, Time, Mode, Venue, Registration Fee, Description.
+    - If descriptions are long, use one table per event with two columns: **Label | Value**
+
+    - **Card-style text blocks are allowed:**
+        - Event title on its own line (**bold**).
+        - Followed by consistently ordered fields: Date, Time, Mode, Venue, Registration Fee.
+        - End with a short description paragraph (maximum two lines).
+        - Separate events using whitespace only.
+
+    **Summary usage:**
+    - When multiple events are listed, include a brief summary at the top (Total events, Date range, Modes).
+
+    **Data handling:**
+    - Never expose raw values like NaN or null. Replace with "Not specified", "To be announced", etc.
+    - Always keep the same field order across all events.
+    - Alignment and consistency matter more than decoration.
+
+    Question:
+    {question}
+
+    Information:
+    {context}
+
+    Answer:
+    """
     response = llm.generate_content(prompt)
     return response.text.strip()
 
@@ -121,7 +164,7 @@ def handle_user_query(question: str) -> str:
                     details.append(f"**{label}:** {event[k]}")
             return gemini_answer(question, "\n".join(details))
 
-    fuzzy_query = extract_keywords(q)
+    fuzzy_query = extract_search_terms(q)
 
     results = retriever_module.hybrid_query(
         user_query=q,

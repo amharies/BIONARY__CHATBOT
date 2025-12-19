@@ -65,7 +65,7 @@ def hybrid_query(
 
             search_clause = """
             (
-                similarity(:user_query, LOWER(search_text)) > 0.15
+                word_similarity(:user_query, LOWER(search_text)) > 0.3
                 OR LOWER(search_text) ILIKE '%' || :user_query || '%'
                 OR embedding <=> :user_vector < :vector_threshold
             )
@@ -93,7 +93,7 @@ def hybrid_query(
                     description_insights,
                     (
                         (1 - (embedding <=> :user_vector)) * :vector_weight
-                        + similarity(:user_query, LOWER(search_text)) * :trigram_weight
+                        + word_similarity(:user_query, LOWER(search_text)) * :trigram_weight
                     ) AS final_score
                 FROM events
                 {where_clause}

@@ -4,6 +4,9 @@ import { useState, type FormEvent } from "react";
 import Link from "next/link";
 import axios from "axios";
 
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
+
 export default function ChatPage() {
   const [query, setQuery] = useState("");
   const [answer, setAnswer] = useState("");
@@ -91,12 +94,41 @@ export default function ChatPage() {
               shadow-[0_0_20px_rgba(0,255,170,0.05)]
             "
           >
-            <h3 className="text-sm font-bold mb-2 tracking-wide opacity-70">
+            <h3 className="text-sm font-bold mb-4 tracking-wide opacity-70 border-b border-gray-700 pb-2">
               AGENT RESPONSE
             </h3>
 
-            <div className="whitespace-pre-wrap text-white">
-              {answer}
+            <div className="text-white text-sm leading-relaxed">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  table: ({ node, ...props }) => (
+                    <div className="overflow-hidden my-6 rounded-lg border-2 border-teal-500/30 shadow-lg shadow-teal-500/10">
+                      <table className="min-w-full text-left border-collapse" {...props} />
+                    </div>
+                  ),
+                  thead: ({ node, ...props }) => (
+                    <thead className="bg-[#1a1a2e] text-teal-300 uppercase tracking-wider text-xs" {...props} />
+                  ),
+                  th: ({ node, ...props }) => (
+                    <th className="p-4 border-b-2 border-teal-500/30 font-bold" {...props} />
+                  ),
+                  td: ({ node, ...props }) => (
+                    <td className="p-4 border-b border-gray-700/50 align-top hover:bg-white/5 transition-colors" {...props} />
+                  ),
+                  strong: ({ node, ...props }) => (
+                    <strong className="text-teal-400 font-bold" {...props} />
+                  ),
+                  ul: ({ node, ...props }) => (
+                    <ul className="list-disc pl-5 my-2 space-y-1 text-gray-300" {...props} />
+                  ),
+                  p: ({ node, ...props }) => (
+                    <p className="mb-3 last:mb-0" {...props} />
+                  ),
+                }}
+              >
+                {answer}
+              </ReactMarkdown>
             </div>
           </div>
         )}
