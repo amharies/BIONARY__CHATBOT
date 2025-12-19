@@ -13,7 +13,7 @@ if not API_KEY:
     raise RuntimeError("GEMINI_API_KEY not set")
 
 genai.configure(api_key=API_KEY)
-llm = genai.GenerativeModel("gemini-3-pro-preview")
+llm = genai.GenerativeModel("gemini-2.5-flash-preview-09-2025")
 
 CURRENT_YEAR = datetime.now().year
 

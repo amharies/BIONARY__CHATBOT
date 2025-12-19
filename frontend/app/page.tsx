@@ -103,7 +103,7 @@ export default function ChatPage() {
                 remarkPlugins={[remarkGfm]}
                 components={{
                   table: ({ node, ...props }) => (
-                    <div className="overflow-hidden my-6 rounded-lg border-2 border-teal-500/30 shadow-lg shadow-teal-500/10">
+                    <div className="overflow-x-auto my-6 rounded-lg border-2 border-teal-500/30 shadow-lg shadow-teal-500/10">
                       <table className="min-w-full text-left border-collapse" {...props} />
                     </div>
                   ),
