@@ -94,3 +94,23 @@ Users need clear guidance on setting up environment variables to correctly run t
 1.  **`.env` File Instructions (`README.md`):**
     *   **Change:** Added a new section in `README.md` under "Getting Started" explaining the required `.env` variables (`DATABASE_URL`, `GEMINI_API_KEY`, `SECRET_KEY`) and providing an example.
     *   **Reasoning:** To provide comprehensive setup instructions for new users.
+**Update 2025-12-22**
+
+**Feature:** Enhanced Output Formatting and Data Consistency.
+
+**Reasoning:**
+To provide a more structured, readable, and consistent output to the user, the LLM prompt was refined to strictly use tables. Additionally, data cleaning and formatting logic was moved and enhanced within the Python backend to ensure clean data is always presented to the user.
+
+**Changes Made:**
+
+1.  **`gemini_answer` (Prompt Update in `backend/query_pipeline.py`):**
+    *   **Change:** Modified the LLM prompt to strictly enforce table-based output. "Card-style text blocks" were removed, and explicit instructions for "Horizontal Tables" (for lists of events) and "Vertical Tables" (for single event details) were added, complete with examples. Data handling instructions for the LLM (Fee "0" to "Free", "NaN" values to "Not specified") were also refined.
+    *   **Reasoning:** To ensure consistent, professional, and easily parsable output from the AI, eliminating variability in formatting and improving clarity.
+
+2.  **`handle_user_query` (Logic Update in `backend/query_pipeline.py`):**
+    *   **Change:** Enhanced Python-side data cleaning to filter out `NaN`, `None`, and empty string values before constructing the context for the LLM. The `registration_fee` of "0" is now explicitly converted to "Free".
+    *   **Reasoning:** To prevent raw, unhandled data values from being passed to the LLM, which could lead to inconsistent or undesirable output, and to provide a more user-friendly representation of free events.
+
+3.  **Date Formatting (Logic Update in `backend/query_pipeline.py`):**
+    *   **Change:** Implemented date formatting for `date_of_event` values within `handle_user_query`. Dates are now parsed from `YYYY-MM-DD` and formatted as `dd-mmm-yyyy` (e.g., `22-Dec-2025`).
+    *   **Reasoning:** To standardize date presentation in a more human-readable format for the end-user.

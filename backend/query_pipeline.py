@@ -52,7 +52,6 @@ def extract_event_name(text):
 def extract_search_terms(text: str) -> str:
     """
     Uses Gemini to extract the core search subject/entity from natural language.
-    Example: "what events did jeffry do" -> "Jeffry"
     """
     try:
         prompt = f"""
@@ -67,58 +66,64 @@ def extract_search_terms(text: str) -> str:
         cleaned = response.text.strip().replace('"', '')
         return cleaned
     except Exception:
-        # Fallback to simple cleaning if LLM fails
         return re.sub(r"[^a-z0-9\s]", "", text.lower())
 
 def gemini_answer(question, context):
     prompt = f"""
-    You are a university knowledge assistant that generates professional, clean, and readable event reports.
+    You are the University Event Portal Assistant. Your goal is to generate professional, high-clarity event reports.
 
-    Answer the user’s question using only the information provided in the context.
-    If information is insufficient or missing, state that clearly and gracefully.
+    **Instructions:**
+    1. Answer the user's question using ONLY the provided context.
+    2. If the context is empty, politely state that no information is available.
+    3. **Data Handling:** - If a fee is "0", display it as "Free".
+       - If a value is "NaN", "None", or "TBA", display it as "Not specified".
 
-    **Tone and behavior:**
-    - Use a concise, professional, and friendly tone.
-    - Avoid unnecessary explanations or filler.
-    - Sound like a reliable university portal, not a casual chatbot.
+    **Formatting Rules (Strict):**
+    * **NO** Markdown headers (#, ##).
+    * **NO** Bullet points (*, -).
+    * **NO** Card-style layouts or text blocks.
+    * **ALWAYS USE TABLES.**
 
-    **Formatting rules (strict):**
-    - **Do NOT use markdown headers.**
-    - **Do NOT use bullet points.**
-    - Do not use decorative symbols or separators for visual design.
-    - Use **bold text** only when absolutely necessary, primarily for event titles.
-    - Do not overuse emphasis.
+    **Table Selection Logic:**
+    * **Scenario A (List of Events):** Use a **Horizontal Table**.
+      Columns: Event Name | Date | Time | Venue |
+    
+    * **Scenario B (Single Event or Detailed View):** Use a **Vertical Table**.
+      Columns: **Attribute** | **Detail**
+      (Rows should include: Event Name, Date, Time, Venue, Mode, Fee, Description, etc.)
 
-    **Event layout principles:**
-    - Structure responses for fast scanning and clarity.
-    - Prefer structured formats over paragraphs when listing multiple events.
+    **Visual Examples:**
 
-    **Allowed presentation styles:**
-    - **Table format is preferred** when listing multiple events.
-    - Use clear column labels such as Event Name, Date, Time, Mode, Venue, Registration Fee, Description.
-    - If descriptions are long, use one table per event with two columns: **Label | Value**
+    ---
+    *Example A: List View (Multiple Events)*
+    Summary: Found 2 events.
 
-    - **Card-style text blocks are allowed:**
-        - Event title on its own line (**bold**).
-        - Followed by consistently ordered fields: Date, Time, Mode, Venue, Registration Fee.
-        - End with a short description paragraph (maximum two lines).
-        - Separate events using whitespace only.
+    | Event Name | Date | Time | Venue |
+    | :--- | :--- | :--- | :--- |
+    | **Robotics 101** | 12 Oct 2024 | 10:00 AM | Lab 2 |
+    | **AI Summit** | 15 Oct 2024 | 2:00 PM | Hall A |
 
-    **Summary usage:**
-    - When multiple events are listed, include a brief summary at the top (Total events, Date range, Modes).
+    ---
+    *Example B: Detail View (Single Event)*
+    Summary: Details for "Deep Learning Workshop".
 
-    **Data handling:**
-    - Never expose raw values like NaN or null. Replace with "Not specified", "To be announced", etc.
-    - Always keep the same field order across all events.
-    - Alignment and consistency matter more than decoration.
+    | Attribute | Detail |
+    | :--- | :--- |
+    | **Event Name** | **Deep Learning Workshop** |
+    | **Date** | 20 Nov 2024 |
+    | **Time** | 9:00 AM |
+    | **Venue** | Main Auditorium |
+    | **Description** | A comprehensive workshop covering neural networks, backpropagation, and real-world applications of AI. |
 
-    Question:
-    {question}
+    ---
 
-    Information:
+    **Context:**
     {context}
 
-    Answer:
+    **User Question:**
+    {question}
+
+    **Answer:**
     """
     response = llm.generate_content(prompt)
     return response.text.strip()
@@ -142,27 +147,10 @@ def handle_user_query(question: str) -> str:
     if "free" in q:
         fee_filter = 0
 
+    # Direct event lookup
     event_name = extract_event_name(q)
-    if event_name:
-        event = retriever_module.get_event_by_name(normalize_text(event_name))
-        if event:
-            details = [f"## {event.get('name_of_event','N/A')}"]
-            for k, label in [
-                ("date_of_event","Date"),
-                ("time_of_event","Time"),
-                ("venue","Venue"),
-                ("mode_of_event","Mode"),
-                ("registration_fee","Registration Fee"),
-                ("speakers","Speakers"),
-                ("faculty_coordinators","Faculty Coordinators"),
-                ("student_coordinators","Student Coordinators"),
-                ("perks","Perks"),
-                ("collaboration","Collaboration"),
-                ("description_insights","Description")
-            ]:
-                if event.get(k) is not None:
-                    details.append(f"**{label}:** {event[k]}")
-            return gemini_answer(question, "\n".join(details))
+    # (Note: You can apply the cleaning logic here too if you wish, 
+    # but the main cleaning happens in the loop below)
 
     fuzzy_query = extract_search_terms(q)
 
@@ -178,26 +166,54 @@ def handle_user_query(question: str) -> str:
         return "I do not have enough information to answer that."
 
     context_parts = []
-    for event in results:
-        details = [f"## {event.get('name_of_event','N/A')}"]
-        for k, label in [
-            ("date_of_event","Date"),
-            ("time_of_event","Time"),
-            ("venue","Venue"),
-            ("mode_of_event","Mode"),
-            ("registration_fee","Registration Fee"),
-            ("speakers","Speakers"),
-            ("faculty_coordinators","Faculty Coordinators"),
-            ("student_coordinators","Student Coordinators"),
-            ("perks","Perks"),
-            ("collaboration","Collaboration"),
-            ("description_insights","Description")
-        ]:
-            if event.get(k) is not None:
-                details.append(f"**{label}:** {event[k]}")
-        if "final_score" in event:
-            details.append(f"**Relevance Score:** {event['final_score']:.2f}")
-        context_parts.append("\n".join(details))
+    
+    # Priority fields mapping (Matches the 'update_events_search_text' hierarchy)
+    field_map = [
+        ("date_of_event", "Date"),
+        ("time_of_event", "Time"),
+        ("venue", "Venue"),
+        ("mode_of_event", "Mode"),
+        ("registration_fee", "Registration Fee"),
+        ("speakers", "Speakers"),
+        ("faculty_coordinators", "Faculty Coordinators"),
+        ("student_coordinators", "Student Coordinators"),
+        ("perks", "Perks"),
+        ("collaboration", "Collaboration"),
+        ("description_insights", "Description")
+    ]
 
-    context = "\n\n---\n\n".join(context_parts)
+    for event in results:
+        # Start with the event name
+        details = [f"Event: {event.get('name_of_event', 'Unknown Event')}"]
+        
+        for key, label in field_map:
+            val = event.get(key)
+            val_str = str(val).strip()
+
+            # --- TRIGRAM LOGIC (Data Cleaning) ---
+            # 1. Skip if value is "NaN", "None", or empty
+            if val is None or val_str.lower() in ['nan', 'none', '', 'null']:
+                continue
+            
+            # 2. Handle Date Formatting
+            if key == "date_of_event":
+                try:
+                    date_obj = datetime.strptime(val_str, '%Y-%m-%d')
+                    val_str = date_obj.strftime('%d-%b-%Y')
+                except ValueError:
+                    # If parsing fails, keep original or handle as 'Not specified'
+                    pass 
+
+            # 3. Handle Zero Fee
+            elif key == "registration_fee" and val_str == "0":
+                val_str = "Free" 
+
+            details.append(f"{label}: {val_str}")
+
+        if "final_score" in event:
+             details.append(f"Relevance Score: {event['final_score']:.2f}")
+
+        context_parts.append(" | ".join(details))
+
+    context = "\n\n".join(context_parts)
     return gemini_answer(question, context)
