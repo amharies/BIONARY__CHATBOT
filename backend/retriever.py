@@ -101,6 +101,8 @@ def hybrid_query(
                 {limit_clause};
             """
 
+            print(sql_query)
+
             result = conn.execute(text(sql_query), sql_params)
             rows = result.mappings().fetchall()
 
@@ -114,6 +116,7 @@ def get_event_by_name(event_name: str):
     try:
         event_name = normalize_text(event_name)
         with engine.connect() as conn:
+            print("SELECT * FROM events WHERE normalize(name_of_event) = :event_name")
             result = conn.execute(
                 text(
                     "SELECT * FROM events WHERE normalize(name_of_event) = :event_name"
