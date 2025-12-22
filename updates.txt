@@ -114,3 +114,20 @@ To provide a more structured, readable, and consistent output to the user, the L
 3.  **Date Formatting (Logic Update in `backend/query_pipeline.py`):**
     *   **Change:** Implemented date formatting for `date_of_event` values within `handle_user_query`. Dates are now parsed from `YYYY-MM-DD` and formatted as `dd-mmm-yyyy` (e.g., `22-Dec-2025`).
     *   **Reasoning:** To standardize date presentation in a more human-readable format for the end-user.
+
+**Update 2025-12-22 (Logging)**
+
+**Feature:** Added a logging mechanism to record user interactions.
+
+**Reasoning:**
+To maintain a record of user queries and the agent's responses for debugging, analysis, and future improvements, a new `logs` table was introduced.
+
+**Changes Made:**
+
+1.  **New `logs` Table:**
+    *   **Schema:** Created a new table named `logs` with columns: `id`, `date` (DD-MM-YYYY), `time` (IST), `question`, and `answer`.
+    *   **Model:** Added a corresponding `Log` SQLAlchemy model in `backend/models.py`.
+    *   **Requirements:** Added `pytz` to `backend/requirements.txt` for timezone handling.
+
+2.  **Logging in `chat_endpoint` (`backend/main.py`):**
+    *   **Change:** The `/api/chat` endpoint now captures the current date and time in IST, formats them, and saves the user's question along with the agent's generated answer into the `logs` table for every request.

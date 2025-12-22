@@ -22,6 +22,7 @@ The backend is a FastAPI application that provides a chat API and an API for add
 - **Chat API (`/api/chat`):** This endpoint uses a RAG pipeline to answer questions about university events. It takes a natural language query, performs a hybrid search (semantic vector search + trigram fuzzy search) on a PostgreSQL database, and uses the Google Gemini language model to generate a natural, well-formatted answer.
 - **Add Event API (`/api/add-event`):** This is a protected endpoint for adding new events to the database. It generates and stores vector embeddings for the event data to enable semantic search.
 - **Authentication:** Authentication for protected endpoints is handled using JSON Web Tokens (JWT).
+- **Request Logging:** Every query to `/api/chat` and its corresponding generated answer is recorded in a `logs` table with an IST timestamp for monitoring and analysis.
 
 ### Technologies
 

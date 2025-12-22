@@ -7,9 +7,11 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, root_validator
 from jose import jwt, JWTError
 from dotenv import load_dotenv
+import datetime
+import pytz
 
 from database import Base, engine, SessionLocal
-from models import User
+from models import User, Log
 from auth import router as auth_router
 
 # Load Environment Variables
@@ -108,16 +110,39 @@ def health_check():
 
 @app.post("/api/chat")
 def chat_endpoint(request: ChatRequest):
+    db = SessionLocal() # Acquire a database session
     try:
         print("Incoming query:", request.query)
-        response = query_pipeline.handle_user_query(request.query)
+        response_text = query_pipeline.handle_user_query(request.query) # Store the text response
         print("Agent response generated")
-        return {"answer": response}
+
+        # Get current time in IST
+        ist = pytz.timezone('Asia/Kolkata')
+        now_ist = datetime.datetime.now(ist)
+        
+        # Format date and time
+        date_str = now_ist.strftime('%d-%m-%Y')
+        time_str = now_ist.strftime('%H:%M:%S')
+
+        # Create a new Log entry
+        new_log = Log(
+            date=date_str,
+            time=time_str,
+            question=request.query,
+            answer=response_text
+        )
+        db.add(new_log)
+        db.commit() # Commit the new log entry
+        db.refresh(new_log) # Refresh to get the generated ID and timestamp
+
+        return {"answer": response_text}
 
     except Exception as e:
         import traceback
         traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
+    finally:
+        db.close() # Close the database session
 
 
 @app.post("/api/add-event")

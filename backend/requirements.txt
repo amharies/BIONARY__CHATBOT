@@ -8,3 +8,5 @@ google-generativeai
 numpy
 sqlalchemy
 python-jose
+pytz
+passlib[bcrypt]
