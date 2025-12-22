@@ -169,6 +169,7 @@ def handle_user_query(question: str) -> str:
     
     # Priority fields mapping (Matches the 'update_events_search_text' hierarchy)
     field_map = [
+        ("event_domain", "Domain"),
         ("date_of_event", "Date"),
         ("time_of_event", "Time"),
         ("venue", "Venue"),
