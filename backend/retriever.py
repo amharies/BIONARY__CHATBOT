@@ -106,11 +106,11 @@ def hybrid_query(
             result = conn.execute(text(sql_query), sql_params)
             rows = result.mappings().fetchall()
 
-        return [dict(row) for row in rows] if rows else []
+        return {"sql_query": sql_query, "results": [dict(row) for row in rows] if rows else []}
 
     except Exception as e:
         print("Hybrid query error:", e)
-        return []
+        return {"sql_query": None, "results": []}
 
 def get_event_by_name(event_name: str):
     try:

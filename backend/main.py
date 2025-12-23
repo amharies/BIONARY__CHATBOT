@@ -113,7 +113,9 @@ def chat_endpoint(request: ChatRequest):
     db = SessionLocal() # Acquire a database session
     try:
         print("Incoming query:", request.query)
-        response_text = query_pipeline.handle_user_query(request.query) # Store the text response
+        response_data = query_pipeline.handle_user_query(request.query) # Store the response data
+        response_text = response_data["answer"]
+        sql_query = response_data["sql_query"]
         print("Agent response generated")
 
         # Get current time in IST
@@ -129,7 +131,8 @@ def chat_endpoint(request: ChatRequest):
             date=date_str,
             time=time_str,
             question=request.query,
-            answer=response_text
+            answer=response_text,
+            sql_query=sql_query
         )
         db.add(new_log)
         db.commit() # Commit the new log entry

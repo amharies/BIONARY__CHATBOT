@@ -122,7 +122,7 @@ Before sending the response back, the backend logs the interaction for auditing 
 -   **Logic:**
     1.  The current timestamp is captured and converted to the 'Asia/Kolkata' (IST) timezone.
     2.  The date and time are formatted into `DD-MM-YYYY` and `HH:MM:SS` strings, respectively.
-    3.  A new `Log` object is created with the user's `question`, the generated `answer`, and the formatted `date` and `time`.
+    3.  A new `Log` object is created with the user's `question`, the generated `answer`, the `sql_query` used to fetch the data, and the formatted `date` and `time`.
     4.  The new log entry is saved to the `logs` table in the database.
 
 ---

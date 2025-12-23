@@ -22,7 +22,7 @@ The backend is a FastAPI application that provides a chat API and an API for add
 - **Chat API (`/api/chat`):** This endpoint uses a RAG pipeline to answer questions about university events. It takes a natural language query, performs a hybrid search (semantic vector search + trigram fuzzy search) on a PostgreSQL database, and uses the Google Gemini language model to generate a natural, well-formatted answer.
 - **Add Event API (`/api/add-event`):** This is a protected endpoint for adding new events to the database. It generates and stores vector embeddings for the event data to enable semantic search.
 - **Authentication:** Authentication for protected endpoints is handled using JSON Web Tokens (JWT).
-- **Request Logging:** Every query to `/api/chat` and its corresponding generated answer is recorded in a `logs` table with an IST timestamp for monitoring and analysis.
+- **Request Logging:** Every query to `/api/chat`, its corresponding generated answer, and the raw SQL query used for retrieval is recorded in a `logs` table with an IST timestamp for monitoring and analysis.
 
 ### Technologies
 
@@ -82,8 +82,10 @@ SECRET_KEY="YOUR_SECRET_KEY_FOR_JWT"
     CREATE EXTENSION IF NOT EXISTS pg_trgm;
     ```
 
-2.  **Create the `events` Table:**
-    You will need to create the `events` table. The schema is defined by the columns in `data/events_table_schema.txt`.
+2.  **Create Tables:**
+    - The `users` and `logs` tables are created automatically by the application on startup (thanks to SQLAlchemy).
+    - The `logs` table has the following columns: `id`, `date`, `time`, `question`, `answer`, and `sql_query` (type `TEXT`).
+    - You will need to create the `events` table. The schema is defined by the columns in `data/events_table_schema.txt`.
 
 3.  **Create the Search Trigger Function:**
     This function automatically concatenates relevant fields into the `search_text` column, which is used for trigram-based fuzzy search.

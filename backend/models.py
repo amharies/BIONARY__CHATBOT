@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String
+from sqlalchemy import Column, Integer, String, Text
 from database import Base
 
 class User(Base):
@@ -16,3 +16,4 @@ class Log(Base):
     time = Column(String, nullable=False)
     question = Column(String, nullable=False)
     answer = Column(String, nullable=False)
+    sql_query = Column(Text, nullable=True)

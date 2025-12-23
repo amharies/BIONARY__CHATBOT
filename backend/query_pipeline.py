@@ -128,7 +128,7 @@ def gemini_answer(question, context):
     response = llm.generate_content(prompt)
     return response.text.strip()
 
-def handle_user_query(question: str) -> str:
+def handle_user_query(question: str) -> dict:
     q = normalize_text(question)
 
     year = extract_year(q)
@@ -154,7 +154,7 @@ def handle_user_query(question: str) -> str:
 
     fuzzy_query = extract_search_terms(q)
 
-    results = retriever_module.hybrid_query(
+    query_data = retriever_module.hybrid_query(
         user_query=q,
         fuzzy_query=fuzzy_query,
         date_filter=date_filter,
@@ -162,8 +162,11 @@ def handle_user_query(question: str) -> str:
         limit=None
     )
 
+    results = query_data["results"]
+    sql_query = query_data["sql_query"]
+
     if not results:
-        return "I do not have enough information to answer that."
+        return {"answer": "I do not have enough information to answer that.", "sql_query": sql_query}
 
     context_parts = []
     
@@ -217,4 +220,5 @@ def handle_user_query(question: str) -> str:
         context_parts.append(" | ".join(details))
 
     context = "\n\n".join(context_parts)
-    return gemini_answer(question, context)
+    answer = gemini_answer(question, context)
+    return {"answer": answer, "sql_query": sql_query}
