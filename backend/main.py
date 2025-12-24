@@ -1,4 +1,6 @@
 import hashlib
+import datetime
+import pytz
 from typing import Optional
 
 from fastapi import FastAPI, HTTPException, Depends
@@ -7,74 +9,64 @@ from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from pydantic import BaseModel, root_validator
 from jose import jwt, JWTError
 from dotenv import load_dotenv
-import datetime
-import pytz
 
-from database import Base, engine, SessionLocal
+from database import Base, engine, SessionLocal, enable_pg_trgm
 from models import User, Log
 from auth import router as auth_router
+from config import SECRET_KEY, ALGORITHM
 
-# Load Environment Variables
-load_dotenv()
-
-# Your existing logic
 import query_pipeline
 import frontend  # python module, not nextjs
 
-from config import SECRET_KEY, ALGORITHM
+# Load env vars
+load_dotenv()
 
-# App Initialization
+# App initialization
 app = FastAPI()
 
-# CORS for Next.js
+# CORS 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=["*"],   # IMPORTANT
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-# /auth/login
+# Auth routes
 app.include_router(auth_router)
 
 security = HTTPBearer()
 
-# Token Verification Dependency
+# Token verification
 def verify_token(
     credentials: HTTPAuthorizationCredentials = Depends(security),
 ):
     token = credentials.credentials
-
     try:
         payload = jwt.decode(token, SECRET_KEY, algorithms=[ALGORITHM])
         username = payload.get("sub")
-
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token payload")
-
         return username
-
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid or expired token")
 
-# Database Initialization
+# DB init
 def create_default_user():
     db = SessionLocal()
     try:
         if not db.query(User).first():
             user = User(
                 username="admin",
-                password_hash=hashlib.sha256(
-                    "admin123".encode()
-                ).hexdigest(),
+                password_hash=hashlib.sha256("admin123".encode()).hexdigest(),
             )
             db.add(user)
             db.commit()
     finally:
         db.close()
 
-# Data Models
+# Schemas
 class ChatRequest(BaseModel):
     query: str
 
@@ -97,10 +89,7 @@ class EventData(BaseModel):
     def empty_str_to_nan(cls, values):
         for key, value in values.items():
             if value == "":
-                if key == "registration_fee":
-                    values[key] = "0"
-                else:
-                    values[key] = "NaN"
+                values[key] = "0" if key == "registration_fee" else "NaN"
         return values
 
 # Routes
@@ -110,67 +99,44 @@ def health_check():
 
 @app.post("/api/chat")
 def chat_endpoint(request: ChatRequest):
-    db = SessionLocal() # Acquire a database session
+    db = SessionLocal()
     try:
-        print("Incoming query:", request.query)
-        response_data = query_pipeline.handle_user_query(request.query) # Store the response data
+        response_data = query_pipeline.handle_user_query(request.query)
         response_text = response_data["answer"]
         sql_query = response_data["sql_query"]
-        print("Agent response generated")
 
-        # Get current time in IST
-        ist = pytz.timezone('Asia/Kolkata')
-        now_ist = datetime.datetime.now(ist)
-        
-        # Format date and time
-        date_str = now_ist.strftime('%d-%m-%Y')
-        time_str = now_ist.strftime('%H:%M:%S')
+        ist = pytz.timezone("Asia/Kolkata")
+        now = datetime.datetime.now(ist)
 
-        # Create a new Log entry
         new_log = Log(
-            date=date_str,
-            time=time_str,
+            date=now.strftime("%d-%m-%Y"),
+            time=now.strftime("%H:%M:%S"),
             question=request.query,
             answer=response_text,
-            sql_query=sql_query
+            sql_query=sql_query,
         )
         db.add(new_log)
-        db.commit() # Commit the new log entry
-        db.refresh(new_log) # Refresh to get the generated ID and timestamp
+        db.commit()
 
         return {"answer": response_text}
 
     except Exception as e:
-        import traceback
-        traceback.print_exc()
         raise HTTPException(status_code=500, detail=str(e))
     finally:
-        db.close() # Close the database session
-
+        db.close()
 
 @app.post("/api/add-event")
 def add_event_endpoint(
     event: EventData,
     _: dict = Depends(verify_token),
 ):
-    try:
-        result = frontend.add_new_event(event.dict())
-        return result
-    except Exception as e:
-        print("ADD EVENT ERROR:", e)  # keep this
-        raise HTTPException(status_code=500, detail=str(e))
+    return frontend.add_new_event(event.dict())
 
 @app.get("/api/verify-token")
 def verify_token_endpoint(_: dict = Depends(verify_token)):
     return {"status": "success", "message": "Token is valid"}
 
-
-
 # Startup
-from database import enable_pg_trgm
 enable_pg_trgm()
 Base.metadata.create_all(bind=engine)
 create_default_user()
-
-# Run with:
-# uvicorn main:app --reload
