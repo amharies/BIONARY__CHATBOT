@@ -12,6 +12,44 @@ The project is divided into two main parts:
 - `backend/`: A [FastAPI](https://fastapi.tiangolo.com/) application that handles the core logic.
 
 ---
+```mermaid
+---
+config:
+  layout: elk
+  look: classic
+---
+flowchart TB
+    User(("User<br>Web Interface")) -- submits credentials --> Backend["Backend API (FastAPI)<br>Authentication, Event Management"]
+    User -- sends chat query --> Backend
+    Admin(("Admin<br>Event Management")) -- submits event data --> Backend
+    Backend -- issues JWT token --> User
+    Backend -- validates token --> User
+    Backend -- stores event data --> DB[("Neon Database<br><br>")]
+    Backend -- generates embeddings --> DB
+    Backend -- normalizes query --> AI["AI &amp; Retrieval Pipeline<br>Gemini, SentenceTransformers"]
+    AI -- retrieves relevant events --> DB
+    AI -- sends prompt to Gemini --> AI
+    AI -- returns response --> Backend
+    Backend -- sends response back --> User
+    DB -- stores user data --> Backend
+    DB -- stores event details --> Backend
+    DB -- stores logs --> Backend
+    Backend -- interacts with neon database --> DB
+    Backend -- calls Gemini API --> AI
+    AI -- uses SentenceTransformers --> AI
+    Backend -- handles user sessions --> User
+    Backend -- processes event management --> Admin
+    Frontend["Frontend (Next.js)<br>User Interface, Chat, Event Management"]
+
+     Backend:::core
+     DB:::db
+     AI:::core
+     Frontend:::core
+    classDef core fill:#1E90FF,stroke:#000,color:#000,stroke-width:2px,rx:10px,ry:10px
+    classDef db fill:#9ACD32,stroke:#000,color:#000,stroke-width:2px,rx:10px,ry:10px
+    classDef external fill:#FFD700,stroke:#000,color:#000,stroke-width:2px,rx:10px,ry:10px
+```
+---
 
 ## Backend
 
