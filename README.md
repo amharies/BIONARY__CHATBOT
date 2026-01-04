@@ -12,10 +12,12 @@ The project is divided into two main parts:
 - `backend/`: A [FastAPI](https://fastapi.tiangolo.com/) application that handles the core logic.
 
 ---
+## Architecture Diagram
+
 ```mermaid
 ---
 config:
-  layout: elk
+  layout: dagre
   look: classic
 ---
 flowchart TB
