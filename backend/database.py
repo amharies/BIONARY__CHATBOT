@@ -12,6 +12,10 @@ DATABASE_URL = os.getenv("NEON_DB_URL")
 if not DATABASE_URL:
     raise RuntimeError("NEON_DB_URL is not set. Please configure it in your .env file.")
 
+# Ensure SSL is required for Neon DB connections
+if "sslmode" not in DATABASE_URL:
+    DATABASE_URL += "?sslmode=require"
+
 engine = create_engine(
     DATABASE_URL,
     echo=False,
