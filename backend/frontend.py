@@ -54,8 +54,13 @@ def add_new_event(form_data):
         with conn.cursor() as cur:
             register_vector(cur)
 
+            # Get the next serial number
+            cur.execute("SELECT COALESCE(MAX(serial_no), 0) + 1 FROM events")
+            next_serial_no = cur.fetchone()[0]
+
             sql = """
                 INSERT INTO events (
+                    serial_no,
                     name_of_event,
                     event_domain,
                     date_of_event,
@@ -75,11 +80,13 @@ def add_new_event(form_data):
                 VALUES (
                     %s, %s, %s, %s, %s,
                     %s, %s, %s, %s, %s,
-                    %s, %s, %s, %s, %s
+                    %s, %s, %s, %s, %s,
+                    %s
                 )
             """
 
             params = (
+                next_serial_no,
                 name,
                 form_data.get("event_domain"),
                 form_data.get("date_of_event"),
